@@ -1,8 +1,9 @@
 'use client';
 
 import React, { useState } from 'react';
+import dynamic from 'next/dynamic';
 
-// ✅ react-konva를 dynamic import + SSR 비활성화
+// ✅ 다이나믹 임포트 + SSR 비활성화
 const DynamicStage = dynamic(() => import('react-konva').then(mod => mod.Stage), {
   ssr: false,
   loading: () => <p>당구대를 불러오는 중...</p>,
@@ -13,8 +14,8 @@ const DynamicCircle = dynamic(() => import('react-konva').then(mod => mod.Circle
 const DynamicLine = dynamic(() => import('react-konva').then(mod => mod.Line), { ssr: false });
 const DynamicText = dynamic(() => import('react-konva').then(mod => mod.Text), { ssr: false });
 
-import useImage from 'use-image';
-import dynamic from 'next/dynamic';
+// ✅ use-image도 SSR 문제 회피
+const useImage = typeof window !== 'undefined' ? require('use-image').default : () => [null, {}];
 
 const TABLE_WIDTH = 800;
 const TABLE_HEIGHT = 400;
@@ -132,17 +133,17 @@ export default function Home() {
 
           {balls.length > 0 && (
             <div>
-              <h3>공 배치 (드래그해서 이동)</h3>
-              {/* ✅ Dynamic Import로 SSR 비활성화 */}
+              <h3>공 배치 (클릭 또는 드래그로 이동)</h3>
               <DynamicStage
                 width={TABLE_WIDTH}
                 height={TABLE_HEIGHT}
                 onClick={(e) => {
+                  if (!isSetupMode) return;
                   const pos = e.target.getStage().getPointerPosition();
                   const newBalls = [...balls, {
                     x: pos.x,
                     y: pos.y,
-                    type: 'white', // 기본값, 실제론 선택 UI 필요
+                    type: 'white',
                     label: '새 공',
                   }];
                   setBalls(newBalls);
@@ -150,7 +151,13 @@ export default function Home() {
                 style={{ border: '1px solid #ccc', margin: '0 auto' }}
               >
                 <DynamicLayer>
-                  <image image={image} width={TABLE_WIDTH} height={TABLE_HEIGHT} />
+                  {image && (
+                    <DynamicImage
+                      image={image}
+                      width={TABLE_WIDTH}
+                      height={TABLE_HEIGHT}
+                    />
+                  )}
                   {balls.map((ball, index) => (
                     <DynamicCircle
                       key={index}
@@ -195,7 +202,9 @@ export default function Home() {
 
           <DynamicStage width={TABLE_WIDTH} height={TABLE_HEIGHT}>
             <DynamicLayer>
-              <image image={image} width={TABLE_WIDTH} height={TABLE_HEIGHT} />
+              {image && (
+                <DynamicImage image={image} width={TABLE_WIDTH} height={TABLE_HEIGHT} />
+              )}
               {balls.map((ball, index) => (
                 <DynamicCircle
                   key={index}
@@ -228,7 +237,16 @@ export default function Home() {
             </DynamicLayer>
           </DynamicStage>
 
-          <button onClick={analyze} style={{ marginTop: 20, padding: '12px 24px', fontSize: '18px', backgroundColor: '#0070f3', color: 'white', border: 'none', borderRadius: 5 }}>
+          <button onClick={analyze} style={{
+            marginTop: 20,
+            padding: '12px 24px',
+            fontSize: '18px',
+            backgroundColor: '#0070f3',
+            color: 'white',
+            border: 'none',
+            borderRadius: 5,
+            cursor: 'pointer'
+          }}>
             🤖 AI 에게 물어보기
           </button>
 
@@ -252,3 +270,11 @@ export default function Home() {
     </div>
   );
 }
+
+// ✅ DynamicImage 컴포넌트 (use-image + Konva.Image)
+const DynamicImage = ({ image, ...props }) => {
+  if (!image) return null;
+  return <DynamicImageComponent image={image} {...props} />;
+};
+
+const DynamicImageComponent = dynamic(() => import('react-konva').then(mod => mod.Image), { ssr: false });
