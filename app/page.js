@@ -1,26 +1,34 @@
-'use client'; // ✅ 이 줄을 파일 가장 위에 추가!
+'use client';
 
-
-// app/page.js
 import React, { useState } from 'react';
-import { Stage, Layer, Circle, Rect, Text as KonvaText, Group } from 'react-konva';
-import Konva from 'konva';
+
+// ✅ react-konva를 dynamic import + SSR 비활성화
+const DynamicStage = dynamic(() => import('react-konva').then(mod => mod.Stage), {
+  ssr: false,
+  loading: () => <p>당구대를 불러오는 중...</p>,
+});
+
+const DynamicLayer = dynamic(() => import('react-konva').then(mod => mod.Layer), { ssr: false });
+const DynamicCircle = dynamic(() => import('react-konva').then(mod => mod.Circle), { ssr: false });
+const DynamicLine = dynamic(() => import('react-konva').then(mod => mod.Line), { ssr: false });
+const DynamicText = dynamic(() => import('react-konva').then(mod => mod.Text), { ssr: false });
+
+import useImage from 'use-image';
+import dynamic from 'next/dynamic';
 
 const TABLE_WIDTH = 800;
 const TABLE_HEIGHT = 400;
 
-// 공 색상 정의
 const BALL_COLORS = {
   white: 'white',
   yellow: 'yellow',
   red: 'red',
 };
 
-// 게임별 필요 공 정의
 const GAME_CONFIG = {
   three_cushion: {
     name: '3쿠션',
-    tableColor: '#1a472a', // 짙은 초록
+    tableColor: '#1a472a',
     balls: [
       { type: 'white', label: '흰공', x: 200, y: 200 },
       { type: 'yellow', label: '노란공', x: 600, y: 200 },
@@ -29,7 +37,7 @@ const GAME_CONFIG = {
   },
   four_ball: {
     name: '4구',
-    tableColor: '#003366', // 짙은 파랑
+    tableColor: '#003366',
     balls: [
       { type: 'white', label: '흰공', x: 200, y: 200 },
       { type: 'yellow', label: '노란공', x: 600, y: 200 },
@@ -42,15 +50,15 @@ const GAME_CONFIG = {
 export default function Home() {
   const [gameType, setGameType] = useState('three_cushion');
   const [balls, setBalls] = useState([]);
-  const [cueBall, setCueBall] = useState('white'); // 내공 선택
+  const [cueBall, setCueBall] = useState('white');
   const [isSetupMode, setIsSetupMode] = useState(true);
   const [analysis, setAnalysis] = useState(null);
   const [path, setPath] = useState([]);
   const [strokePoint, setStrokePoint] = useState(null);
 
   const config = GAME_CONFIG[gameType];
+  const [image] = useImage('/pool_table.jpg');
 
-  // 게임 선택 시 초기 공 배치
   const handleGameSelect = () => {
     setBalls(config.balls.map(b => ({ ...b })));
     setIsSetupMode(true);
@@ -125,38 +133,41 @@ export default function Home() {
           {balls.length > 0 && (
             <div>
               <h3>공 배치 (드래그해서 이동)</h3>
-              <Stage width={TABLE_WIDTH} height={TABLE_HEIGHT}>
-                <Layer>
-                  {/* 당구대 */}
-                  <Rect
-                    x={0}
-                    y={0}
-                    width={TABLE_WIDTH}
-                    height={TABLE_HEIGHT}
-                    fill={config.tableColor}
-                    shadowBlur={10}
-                  />
-                  {/* 공들 */}
+              {/* ✅ Dynamic Import로 SSR 비활성화 */}
+              <DynamicStage
+                width={TABLE_WIDTH}
+                height={TABLE_HEIGHT}
+                onClick={(e) => {
+                  const pos = e.target.getStage().getPointerPosition();
+                  const newBalls = [...balls, {
+                    x: pos.x,
+                    y: pos.y,
+                    type: 'white', // 기본값, 실제론 선택 UI 필요
+                    label: '새 공',
+                  }];
+                  setBalls(newBalls);
+                }}
+                style={{ border: '1px solid #ccc', margin: '0 auto' }}
+              >
+                <DynamicLayer>
+                  <image image={image} width={TABLE_WIDTH} height={TABLE_HEIGHT} />
                   {balls.map((ball, index) => (
-                    <Group key={index} draggable
-                           x={ball.x} y={ball.y}
-                           onDragEnd={(e) => {
-                             updateBallPosition(index, { x: e.target.x(), y: e.target.y() });
-                           }}>
-                      <Circle radius={15} fill={BALL_COLORS[ball.type]} stroke="black" strokeWidth={2} />
-                      <KonvaText
-                        text={ball.label}
-                        fontSize={12}
-                        fill="black"
-                        align="center"
-                        y={20}
-                        width={30}
-                        height={15}
-                      />
-                    </Group>
+                    <DynamicCircle
+                      key={index}
+                      x={ball.x}
+                      y={ball.y}
+                      radius={15}
+                      fill={BALL_COLORS[ball.type]}
+                      stroke="black"
+                      strokeWidth={2}
+                      draggable
+                      onDragEnd={(e) => {
+                        updateBallPosition(index, { x: e.target.x(), y: e.target.y() });
+                      }}
+                    />
                   ))}
-                </Layer>
-              </Stage>
+                </DynamicLayer>
+              </DynamicStage>
 
               <div style={{ marginTop: 20 }}>
                 <label>
@@ -181,31 +192,23 @@ export default function Home() {
         <>
           <h2>🎯 분석 요청</h2>
           <p>내공: {balls.find(b => b.type === cueBall)?.label}</p>
-          <Stage width={TABLE_WIDTH} height={TABLE_HEIGHT}>
-            <Layer>
-              {/* 현재 배치된 당구대 및 공 */}
-              <Rect
-                x={0}
-                y={0}
-                width={TABLE_WIDTH}
-                height={TABLE_HEIGHT}
-                fill={config.tableColor}
-              />
+
+          <DynamicStage width={TABLE_WIDTH} height={TABLE_HEIGHT}>
+            <DynamicLayer>
+              <image image={image} width={TABLE_WIDTH} height={TABLE_HEIGHT} />
               {balls.map((ball, index) => (
-                <Group key={index}>
-                  <Circle
-                    x={ball.x}
-                    y={ball.y}
-                    radius={15}
-                    fill={BALL_COLORS[ball.type]}
-                    stroke="black"
-                    strokeWidth={2}
-                  />
-                </Group>
+                <DynamicCircle
+                  key={index}
+                  x={ball.x}
+                  y={ball.y}
+                  radius={15}
+                  fill={BALL_COLORS[ball.type]}
+                  stroke="black"
+                  strokeWidth={2}
+                />
               ))}
-              {/* AI 추천 경로 */}
               {path.length > 1 && (
-                <Line
+                <DynamicLine
                   points={path.flat()}
                   stroke="yellow"
                   strokeWidth={4}
@@ -213,19 +216,17 @@ export default function Home() {
                   dash={[10, 5]}
                 />
               )}
-              {/* 당점 */}
               {strokePoint && (
-                <Circle
+                <DynamicCircle
                   x={strokePoint[0]}
                   y={strokePoint[1]}
                   radius={8}
                   fill="red"
                   opacity={0.8}
-                  shadowBlur={10}
                 />
               )}
-            </Layer>
-          </Stage>
+            </DynamicLayer>
+          </DynamicStage>
 
           <button onClick={analyze} style={{ marginTop: 20, padding: '12px 24px', fontSize: '18px', backgroundColor: '#0070f3', color: 'white', border: 'none', borderRadius: 5 }}>
             🤖 AI 에게 물어보기
