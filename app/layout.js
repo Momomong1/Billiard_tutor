@@ -9,12 +9,10 @@ export const metadata = {
   description: '공 배치 → AI 분석 → 최적 코스 추천',
 };
 
-export default function Layout({ children }) {
+export default function RootLayout({ children }) {
   return (
     <html lang="ko">
-      <body className={inter.className} style={{ margin: 0, padding: 0 }}>
-        {children}
-      </body>
+      <body className={inter.className}>{children}</body>
     </html>
   );
 }
