@@ -1,3 +1,6 @@
+'use client'; // ✅ 이 줄을 파일 가장 위에 추가!
+
+
 // app/page.js
 import React, { useState } from 'react';
 import { Stage, Layer, Circle, Rect, Text as KonvaText, Group } from 'react-konva';
