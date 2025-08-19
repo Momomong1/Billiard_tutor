@@ -1,4 +1,5 @@
-// app/page.js
+'use client'; // ✅ 이 한 줄이 핵심!
+
 import { useState } from 'react';
 import dynamic from 'next/dynamic';
 
