@@ -3,14 +3,14 @@
 import React, { useState } from 'react';
 import dynamic from 'next/dynamic';
 
-// ✅ Konva 컴포넌트 다이나믹 임포트 (서버 렌더링 비활성화)
-const Stage = dynamic(() => import('react-konva').then(mod => mod.Stage), { ssr: false });
-const Layer = dynamic(() => import('react-konva').then(mod => mod.Layer), { ssr: false });
-const Circle = dynamic(() => import('react-konva').then(mod => mod.Circle), { ssr: false });
-const Rect = dynamic(() => import('react-konva').then(mod => mod.Rect), { ssr: false });
-const Line = dynamic(() => import('react-konva').then(mod => mod.Line), { ssr: false });
-const KonvaText = dynamic(() => import('react-konva').then(mod => mod.Text), { ssr: false });
-const Group = dynamic(() => import('react-konva').then(mod => mod.Group), { ssr: false });
+// ✅ Konva 컴포넌트들을 클라이언트 전용으로만 로드 (SSR 차단)
+const Stage = dynamic(() => import('react-konva').then(m => m.Stage), { ssr: false });
+const Layer = dynamic(() => import('react-konva').then(m => m.Layer), { ssr: false });
+const Circle = dynamic(() => import('react-konva').then(m => m.Circle), { ssr: false });
+const Rect = dynamic(() => import('react-konva').then(m => m.Rect), { ssr: false });
+const Line = dynamic(() => import('react-konva').then(m => m.Line), { ssr: false });
+const KonvaText = dynamic(() => import('react-konva').then(m => m.Text), { ssr: false });
+const Group = dynamic(() => import('react-konva').then(m => m.Group), { ssr: false });
 
 const TABLE_WIDTH = 800;
 const TABLE_HEIGHT = 400;
@@ -252,3 +252,4 @@ export default function Home() {
     </div>
   );
 }
+
