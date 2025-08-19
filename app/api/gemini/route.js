@@ -1,62 +1,59 @@
 // app/api/gemini/route.js
 import { GoogleGenerativeAI } from "@google/generative-ai";
 
-export const runtime = 'edge'; // Vercel Edge Runtime 사용 가능
+export const runtime = 'edge';
 
 export async function POST(request) {
-  const { cueBall, balls } = await request.json();
-
+  const { cueBall, gameType, balls } = await request.json();
   const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
   const model = genAI.getGenerativeModel({ model: "gemini-1.5-pro" });
 
   const prompt = `
-당구대 위에 공이 다음과 같이 배치되어 있습니다:
-- 내공: ${cueBall === 'white' ? '흰공' : '노란공'}
-- 공들: ${balls.map(b => `${b.type} (${Math.round(b.x)}, ${Math.round(b.y)})`).join(', ')}
+당구 게임: ${gameType === 'three_cushion' ? '3쿠션' : '4구'}
+내공: ${cueBall}
+공 배치:
+${balls.map(b => `- ${b.label} (${b.type}): (${b.x}, ${b.y})`).join('\n')}
 
 당신은 세계적인 당구 전문가입니다.
-이 상황에서 가장 이상적인 코스를 분석해주세요.
-- 타격할 당점 (좌표 추정)
-- 방향 화살표 경로 (시작점과 반사점 좌표 예시)
+이 상황에서 최적의 코스를 분석해주세요.
+- 타격할 당점 좌표 (추정)
+- 경로 (화살표 방향, 쿠션 반사 예측)
 - 어떤 공을 먼저 맞추는지
-- 몇 쿠션 사용하는지
+- 몇 쿠션 코스인지
 
-결과를 JSON 형식으로만 출력하세요:
+결과를 아래 JSON 형식으로만 응답하세요:
 {
-  "text": "설명 텍스트",
+  "text": "설명 텍스트 (2~3문장)",
   "strokePoint": [x, y],
   "path": [[x1, y1], [x2, y2], [x3, y3]]
 }
-
-좌표는 당구대 크기(800x400) 기준입니다.
+모든 좌표는 800x400 크기 기준입니다.
 `;
 
   try {
     const result = await model.generateContent(prompt);
     const response = await result.response;
     let text = response.text();
-
-    // 코드 블록 제거
     text = text.replace(/```json/g, '').replace(/```/g, '').trim();
-
     const parsed = JSON.parse(text);
 
-    // 안전하게 좌표 제한
-    parsed.strokePoint = parsed.strokePoint?.map(n => Math.max(0, Math.min(800, n)));
-    parsed.path = parsed.path?.map(p => [
-      Math.max(0, Math.min(800, p[0])),
-      Math.max(0, Math.min(400, p[1]))
-    ]);
+    // 좌표 보정
+    const clamp = (val, min, max) => Math.max(min, Math.min(max, val));
+    if (parsed.strokePoint) {
+      parsed.strokePoint = [clamp(parsed.strokePoint[0], 0, 800), clamp(parsed.strokePoint[1], 0, 400)];
+    }
+    if (parsed.path) {
+      parsed.path = parsed.path.map(p => [clamp(p[0], 0, 800), clamp(p[1], 0, 400)]);
+    }
 
     return new Response(JSON.stringify(parsed), {
       status: 200,
       headers: { 'Content-Type': 'application/json' },
     });
   } catch (error) {
-    console.error("Gemini API Error:", error);
     return new Response(
       JSON.stringify({
-        text: "분석 중 오류가 발생했습니다.",
+        text: "분석 실패: 입력을 다시 확인해 주세요.",
         strokePoint: null,
         path: []
       }),
