@@ -1,0 +1,18 @@
+{
+  "name": "billiards-ai-app",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start"
+  },
+  "dependencies": {
+    "next": "latest",
+    "react": "^18",
+    "react-dom": "^18",
+    "@google/generative-ai": "^0.15.0",
+    "react-konva": "^18.2.5",
+    "konva": "^9.3.15"
+  }
+}
