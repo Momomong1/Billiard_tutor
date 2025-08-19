@@ -31,4 +31,63 @@ export default function BilliardCanvas({ gameType, balls, onBallsChange, cueBall
 
   return (
     <div>
-      <h3>공 배치: {config.name}</h3
+      <h3>공 배치: {config.name}</h3>
+      <div style={{ marginBottom: 10 }}>
+        <button onClick={() => setSelectedType('white')}>흰공</button>
+        <button onClick={() => setSelectedType('yellow')}>노란공</button>
+        <button onClick={() => setSelectedType('red')}>빨간공</button>
+      </div>
+
+      <Stage
+        width={TABLE_WIDTH}
+        height={TABLE_HEIGHT}
+        onClick={handleCanvasClick}
+        style={{ border: '1px solid #ccc', margin: '0 auto' }}
+      >
+        <Layer>
+          <Rect width={TABLE_WIDTH} height={TABLE_HEIGHT} fill={config.tableColor} />
+          {balls.map((ball, i) => (
+            <Circle
+              key={i}
+              x={ball.x}
+              y={ball.y}
+              radius={15}
+              fill={
+                ball.type === 'white' ? 'white' :
+                ball.type === 'yellow' ? 'yellow' : 'red'
+              }
+              stroke="black"
+              strokeWidth={2}
+              draggable
+              onClick={() => removeBall(i)}
+              onDragEnd={(e) => {
+                const newBalls = [...balls];
+                newBalls[i].x = e.target.x();
+                newBalls[i].y = e.target.y();
+                onBallsChange(newBalls);
+              }}
+            />
+          ))}
+          {analysis?.path && analysis.path.length > 1 && (
+            <Line
+              points={analysis.path.flat()}
+              stroke="yellow"
+              strokeWidth={4}
+              lineCap="round"
+              dash={[10, 5]}
+            />
+          )}
+          {analysis?.strokePoint && (
+            <Circle
+              x={analysis.strokePoint[0]}
+              y={analysis.strokePoint[1]}
+              radius={8}
+              fill="red"
+              opacity={0.8}
+            />
+          )}
+        </Layer>
+      </Stage>
+    </div>
+  );
+}
