@@ -1,22 +1,12 @@
-'use client';
-
-import React, { useState } from 'react';
+// app/page.js
+import { useState } from 'react';
 import dynamic from 'next/dynamic';
 
-// ✅ react-konva 전부 다이나믹 + SSR 비활성화
-const DynamicStage = dynamic(() => import('react-konva').then(mod => mod.Stage), { ssr: false });
-const DynamicLayer = dynamic(() => import('react-konva').then(mod => mod.Layer), { ssr: false });
-const DynamicCircle = dynamic(() => import('react-konva').then(mod => mod.Circle), { ssr: false });
-const DynamicLine = dynamic(() => import('react-konva').then(mod => mod.Line), { ssr: false });
-
-const TABLE_WIDTH = 800;
-const TABLE_HEIGHT = 400;
-
-const BALL_COLORS = {
-  white: 'white',
-  yellow: 'yellow',
-  red: 'red',
-};
+// ✅ 클라이언트 전용 컴포넌트를 다이나믹 임포트
+const DynamicBilliardCanvas = dynamic(() => import('./BilliardCanvas'), {
+  ssr: false,
+  loading: () => <p>당구대를 준비 중...</p>,
+});
 
 const GAME_CONFIG = {
   three_cushion: {
@@ -46,22 +36,11 @@ export default function Home() {
   const [cueBall, setCueBall] = useState('white');
   const [isSetupMode, setIsSetupMode] = useState(true);
   const [analysis, setAnalysis] = useState(null);
-  const [path, setPath] = useState([]);
-  const [strokePoint, setStrokePoint] = useState(null);
-
-  const config = GAME_CONFIG[gameType];
 
   const handleGameSelect = () => {
-    setBalls(config.balls.map(b => ({ ...b })));
+    setBalls(GAME_CONFIG[gameType].balls.map(b => ({ ...b })));
     setIsSetupMode(true);
     setAnalysis(null);
-    setPath([]);
-    setStrokePoint(null);
-  };
-
-  const updateBallPosition = (index, newAttrs) => {
-    const newBalls = balls.map((ball, i) => (i === index ? { ...ball, ...newAttrs } : ball));
-    setBalls(newBalls);
   };
 
   const confirmSetup = () => {
@@ -82,11 +61,9 @@ export default function Home() {
         body: JSON.stringify(payload),
       });
       const data = await res.json();
-      setAnalysis(data.text || "분석 완료");
-      if (data.path) setPath(data.path);
-      if (data.strokePoint) setStrokePoint(data.strokePoint);
+      setAnalysis(data);
     } catch (error) {
-      setAnalysis("분석 중 오류가 발생했습니다.");
+      setAnalysis({ text: "분석 중 오류 발생" });
     }
   };
 
@@ -123,49 +100,15 @@ export default function Home() {
           </div>
 
           {balls.length > 0 && (
-            <div>
-              <h3>공 배치 (드래그해서 이동)</h3>
-              <DynamicStage
-                width={TABLE_WIDTH}
-                height={TABLE_HEIGHT}
-                onClick={(e) => {
-                  if (!isSetupMode) return;
-                  const pos = e.target.getStage().getPointerPosition();
-                  const newBalls = [...balls, {
-                    x: pos.x,
-                    y: pos.y,
-                    type: 'white',
-                    label: '새 공',
-                  }];
-                  setBalls(newBalls);
-                }}
-                style={{ border: '1px solid #ccc', margin: '0 auto' }}
-              >
-                <DynamicLayer>
-                  {/* ✅ 이미지 없이 코드로 당구대 그리기 */}
-                  <rect
-                    width={TABLE_WIDTH}
-                    height={TABLE_HEIGHT}
-                    fill={config.tableColor}
-                    shadowBlur={10}
-                  />
-                  {balls.map((ball, index) => (
-                    <DynamicCircle
-                      key={index}
-                      x={ball.x}
-                      y={ball.y}
-                      radius={15}
-                      fill={BALL_COLORS[ball.type]}
-                      stroke="black"
-                      strokeWidth={2}
-                      draggable
-                      onDragEnd={(e) => {
-                        updateBallPosition(index, { x: e.target.x(), y: e.target.y() });
-                      }}
-                    />
-                  ))}
-                </DynamicLayer>
-              </DynamicStage>
+            <>
+              <DynamicBilliardCanvas
+                gameType={gameType}
+                balls={balls}
+                onBallsChange={setBalls}
+                cueBall={cueBall}
+                analysis={analysis}
+                onAnalyze={analyze}
+              />
 
               <div style={{ marginTop: 20 }}>
                 <label>
@@ -183,55 +126,36 @@ export default function Home() {
               <button onClick={confirmSetup} style={{ marginTop: 20, padding: '10px 20px', fontSize: '16px' }}>
                 ✅ 위치 확정
               </button>
-            </div>
+            </>
           )}
         </>
       ) : (
         <>
-          <h2>🎯 분석 요청</h2>
+          <h2>🎯 AI 분석 요청</h2>
           <p>내공: {balls.find(b => b.type === cueBall)?.label}</p>
 
-          <DynamicStage width={TABLE_WIDTH} height={TABLE_HEIGHT}>
-            <DynamicLayer>
-              {/* ✅ 이미지 없이 Rect로 당구대 */}
-              <rect width={TABLE_WIDTH} height={TABLE_HEIGHT} fill={config.tableColor} />
-              {balls.map((ball, index) => (
-                <DynamicCircle
-                  key={index}
-                  x={ball.x}
-                  y={ball.y}
-                  radius={15}
-                  fill={BALL_COLORS[ball.type]}
-                  stroke="black"
-                  strokeWidth={2}
-                />
-              ))}
-              {path.length > 1 && (
-                <DynamicLine
-                  points={path.flat()}
-                  stroke="yellow"
-                  strokeWidth={4}
-                  lineCap="round"
-                  dash={[10, 5]}
-                />
-              )}
-              {strokePoint && (
-                <DynamicCircle
-                  x={strokePoint[0]}
-                  y={strokePoint[1]}
-                  radius={8}
-                  fill="red"
-                  opacity={0.8}
-                />
-              )}
-            </DynamicLayer>
-          </DynamicStage>
+          <DynamicBilliardCanvas
+            gameType={gameType}
+            balls={balls}
+            onBallsChange={setBalls}
+            cueBall={cueBall}
+            analysis={analysis}
+          />
 
-          <button onClick={analyze} style={{ marginTop: 20, padding: '12px 24px', fontSize: '18px', backgroundColor: '#0070f3', color: 'white', border: 'none', borderRadius: 5 }}>
+          <button onClick={analyze} style={{
+            marginTop: 20,
+            padding: '12px 24px',
+            fontSize: '18px',
+            backgroundColor: '#0070f3',
+            color: 'white',
+            border: 'none',
+            borderRadius: 5,
+            cursor: 'pointer'
+          }}>
             🤖 AI 에게 물어보기
           </button>
 
-          {analysis && (
+          {analysis?.text && (
             <div style={{
               marginTop: 30,
               padding: 20,
@@ -243,7 +167,7 @@ export default function Home() {
               border: '1px solid #ddd'
             }}>
               <h3>🧠 AI 분석 결과</h3>
-              <p style={{ whiteSpace: 'pre-line' }}>{analysis}</p>
+              <p style={{ whiteSpace: 'pre-line' }}>{analysis.text}</p>
             </div>
           )}
         </>
